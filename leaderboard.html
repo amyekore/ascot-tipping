@@ -4,10 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Ascot Tipping Leaderboard</title>
-  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="xlsx.full.min.js"></script>
 </head>
 <body style="margin:0">
   <div id="root"></div>
@@ -15,26 +15,21 @@
   <script type="text/babel">
     const { useState, useEffect } = React;
 
-    // ── GitHub Auto-Fetch ────────────────────────────────────────────────────────
-    // After creating your GitHub repo, paste the raw URL to your Excel file here.
-    // Format: https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO_NAME/main/ascot_tipping_scoresheet.xlsx
     const EXCEL_URL = "https://raw.githubusercontent.com/amyekore/ascot-tipping/main/ascot_tipping_scoresheet.xlsx";
-    // ────────────────────────────────────────────────────────────────────────────
 
     const RACES = [
-      { name: "Norfolk Stakes",     time: "14:30", grade: "G2" },
-      { name: "King George V",      time: "15:05", grade: "Handicap" },
-      { name: "Ribblesdale Stakes", time: "15:40", grade: "G2" },
-      { name: "Gold Cup",           time: "16:20", grade: "G1" },
-      { name: "Britannia Stakes",   time: "17:00", grade: "Heritage" },
-      { name: "Hampton Court",      time: "17:35", grade: "G3" },
+      { name: "The Chesham Stakes",       time: "14:30", grade: "G2" },
+      { name: "The King George V Stakes", time: "15:05", grade: "Handicap" },
+      { name: "The Ribblesdale Stakes",   time: "15:40", grade: "G2" },
+      { name: "The Gold Cup",             time: "16:15", grade: "G1" },
+      { name: "The Britannia Stakes",     time: "16:50", grade: "Heritage" },
     ];
 
     const PLACE_LABELS = ["1st", "2nd", "3rd", "4th", "5th", "6th"];
     const POINTS       = { 1:10, 2:6, 3:4, 4:3, 5:2, 6:1 };
     const ADMIN_PASS   = "kore2026";
+    const PTS_COLS     = [3, 5, 7, 9, 11];
 
-    // ── Palette ─────────────────────────────────────────────
     const GOLD  = "#d8c08a";
     const GOLD2 = "#E8D5A3";
     const PINK  = "#d43f84";
@@ -43,7 +38,6 @@
     const TEXT3 = "#d5d8e0";
     const NAVY1 = "#00124f";
     const NAVY2 = "#222c56";
-    // ────────────────────────────────────────────────────────
 
     function loadFromStorage() {
       try {
@@ -61,26 +55,20 @@
     function parseExcel(buffer) {
       const wb = XLSX.read(buffer, { type: "array" });
 
-      // ── Picks & Scores sheet — one row per guest, authoritative ──
-      // Columns: #, Guest Name, Race1Pick, Race1Pts, Race2Pick, Race2Pts, ..., TOTAL
-      // Pts columns at indices 3,5,7,9,11,13 — TOTAL at index 14
       const psSheet = wb.Sheets["Picks & Scores"];
       const psRows  = XLSX.utils.sheet_to_json(psSheet, { header: 1 });
-      const PTS_COLS = [3, 5, 7, 9, 11, 13];
       const leaderboard = psRows.slice(3)
         .filter(r => r[1] && String(r[1]).trim() !== "")
         .map(r => ({
           name:    String(r[1]).trim(),
-          total:   Number(r[14]) || 0,
+          total:   Number(r[12]) || 0,
           winners: PTS_COLS.filter(c => Number(r[c]) === 10).length,
         }))
         .sort((a, b) => b.total - a.total || b.winners - a.winners);
 
-      // ── Race Results sheet ─────────────────────────────────
       const rrSheet = wb.Sheets["Race Results"];
       const rrRows  = XLSX.utils.sheet_to_json(rrSheet, { header: 1 });
-      // data rows start at index 3, cols: race name | 1st..6th
-      const raceResults = rrRows.slice(3, 9).map(r => ({
+      const raceResults = rrRows.slice(3, 8).map(r => ({
         name:   String(r[0] || "").replace(/\r\n/g, " "),
         places: [r[1],r[2],r[3],r[4],r[5],r[6]].map(v => v ? String(v).trim() : ""),
       }));
@@ -111,11 +99,8 @@
           const buf = await res.arrayBuffer();
           const { leaderboard: lb, raceResults: rr } = parseExcel(new Uint8Array(buf));
           const now = new Date().toLocaleTimeString("en-GB", { hour:"2-digit", minute:"2-digit" });
-          setLeaderboard(lb);
-          setRaceResults(rr);
-          setLastUpdate(now);
-          setAnimate(true);
-          setTimeout(() => setAnimate(false), 600);
+          setLeaderboard(lb); setRaceResults(rr); setLastUpdate(now);
+          setAnimate(true); setTimeout(() => setAnimate(false), 600);
           localStorage.setItem("lb-data",    JSON.stringify(lb));
           localStorage.setItem("rr-data",    JSON.stringify(rr));
           localStorage.setItem("lb-updated", now);
@@ -125,8 +110,7 @@
 
       useEffect(() => {
         fetchFromGitHub();
-        if (!EXCEL_URL) return;
-        const interval = setInterval(fetchFromGitHub, 60000); // refresh every 60 seconds
+        const interval = setInterval(fetchFromGitHub, 60000);
         return () => clearInterval(interval);
       }, []);
 
@@ -138,17 +122,14 @@
           try {
             const { leaderboard: lb, raceResults: rr } = parseExcel(new Uint8Array(ev.target.result));
             const now = new Date().toLocaleTimeString("en-GB", { hour:"2-digit", minute:"2-digit" });
-            setLeaderboard(lb);
-            setRaceResults(rr);
-            setLastUpdate(now);
-            setAnimate(true);
-            setTimeout(() => setAnimate(false), 600);
+            setLeaderboard(lb); setRaceResults(rr); setLastUpdate(now);
+            setAnimate(true); setTimeout(() => setAnimate(false), 600);
             localStorage.setItem("lb-data",    JSON.stringify(lb));
             localStorage.setItem("rr-data",    JSON.stringify(rr));
             localStorage.setItem("lb-updated", now);
             setLoadMsg(`✓ Loaded ${lb.length} guests · ${now}`);
           } catch(err) {
-            setLoadMsg("✗ Could not read file — make sure you're uploading the scoresheet.");
+            setLoadMsg("✗ Could not read file — make sure you're uploading the correct scoresheet.");
           }
           e.target.value = "";
         };
@@ -178,9 +159,7 @@
         navBtn: (active) => ({ padding:"10px 16px", background: active ? "rgba(212,63,132,0.18)" : "transparent", border:`1px solid ${active ? PINK : "rgba(216,192,138,0.25)"}`, color: active ? PINK : TEXT3, fontFamily:"'Georgia',serif", fontSize:"11px", letterSpacing:"2px", textTransform:"uppercase", cursor:"pointer", transition:"all 0.3s" }),
         content:    { padding:"0 12px 32px", position:"relative", zIndex:1 },
         card: (rank) => ({
-          background: rank === 0 ? "linear-gradient(135deg, rgba(212,63,132,0.22) 0%, rgba(212,63,132,0.06) 100%)"
-            : rank < 3  ? "linear-gradient(135deg, rgba(216,192,138,0.12) 0%, rgba(34,44,86,0.4) 100%)"
-            : "rgba(255,255,255,0.04)",
+          background: rank === 0 ? "linear-gradient(135deg, rgba(212,63,132,0.22) 0%, rgba(212,63,132,0.06) 100%)" : rank < 3 ? "linear-gradient(135deg, rgba(216,192,138,0.12) 0%, rgba(34,44,86,0.4) 100%)" : "rgba(255,255,255,0.04)",
           border: rank === 0 ? "1px solid rgba(212,63,132,0.5)" : rank < 3 ? "1px solid rgba(216,192,138,0.2)" : "1px solid rgba(255,255,255,0.06)",
           borderRadius:"10px", padding: rank === 0 ? "16px" : "12px 14px", marginBottom: rank < 3 ? "8px" : "4px",
           display:"flex", alignItems:"center", gap:"12px",
@@ -210,18 +189,15 @@
           <style>{`@keyframes slideIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }`}</style>
           <div style={s.topPattern}/>
 
-          {/* ── Header ── */}
           <div style={s.header}>
-            <img src="logo-white.png" alt="Kore Systems"
-                 style={{ height:"64px", width:"auto", marginBottom:"-6px", opacity:0.92 }}/>
+            <img src="logo-white.png" alt="Kore Systems" style={{ height:"64px", width:"auto", marginBottom:"-6px", opacity:0.92 }}/>
             <div style={s.crown}>♛</div>
             <div style={s.title}>Royal Ascot 2026</div>
             <div style={s.subtitle}>Ladies Day Tipping</div>
             <div style={s.divider}/>
-            <div style={s.raceCount}>{racesComplete} of 6 races complete</div>
+            <div style={s.raceCount}>{racesComplete} of 5 races complete</div>
           </div>
 
-          {/* ── Nav ── */}
           <div style={s.nav}>
             {["leaderboard","races","scoring"].map(v => (
               <button key={v} style={s.navBtn(view===v)} onClick={()=>setView(v)}>
@@ -233,40 +209,36 @@
 
           <div style={s.content}>
 
-            {/* ── Leaderboard ── */}
             {view==="leaderboard" && (
               <>
-              {EXCEL_URL && (
                 <div style={{textAlign:"center",marginBottom:"12px"}}>
                   <button onClick={fetchFromGitHub} disabled={fetching} style={{background:"transparent",border:`1px solid rgba(216,192,138,0.3)`,color:GOLD2,fontFamily:"'Georgia',serif",fontSize:"11px",letterSpacing:"2px",padding:"6px 14px",borderRadius:"20px",cursor:fetching?"not-allowed":"pointer",opacity:fetching?0.5:1}}>
                     {fetching ? "Refreshing…" : "↻ Refresh Scores"}
                   </button>
                 </div>
-              )}
-              {leaderboard.length===0
-                ? <div style={s.noData}>No data loaded yet.<br/>The leaderboard will appear once the Excel is uploaded.</div>
-                : leaderboard.map((g,i) => (
-                  <div key={i} style={s.card(i)}>
-                    <div style={s.rankStyle(i)}>{medal(i)}</div>
-                    <div style={s.nameStyle(i)}>
-                      {g.name}
-                      {i===0 && g.total>0 && (
-                        <div style={{fontSize:"10px",color:"rgba(212,63,132,0.7)",marginTop:"2px"}}>
-                          {g.winners} winner{g.winners!==1?"s":""} picked
-                        </div>
-                      )}
+                {leaderboard.length===0
+                  ? <div style={s.noData}>No data loaded yet.<br/>Scores will appear here once races begin.</div>
+                  : leaderboard.map((g,i) => (
+                    <div key={i} style={s.card(i)}>
+                      <div style={s.rankStyle(i)}>{medal(i)}</div>
+                      <div style={s.nameStyle(i)}>
+                        {g.name}
+                        {i===0 && g.total>0 && (
+                          <div style={{fontSize:"10px",color:"rgba(212,63,132,0.7)",marginTop:"2px"}}>
+                            {g.winners} winner{g.winners!==1?"s":""} picked
+                          </div>
+                        )}
+                      </div>
+                      <div style={{textAlign:"right"}}>
+                        <div style={s.pts(i)}>{g.total}</div>
+                        <div style={s.ptsLbl}>pts</div>
+                      </div>
                     </div>
-                    <div style={{textAlign:"right"}}>
-                      <div style={s.pts(i)}>{g.total}</div>
-                      <div style={s.ptsLbl}>pts</div>
-                    </div>
-                  </div>
-                ))
-              }
+                  ))
+                }
               </>
             )}
 
-            {/* ── Races ── */}
             {view==="races" && RACES.map((race,i) => {
               const res = raceResults[i];
               return (
@@ -288,7 +260,6 @@
               );
             })}
 
-            {/* ── Scoring guide ── */}
             {view==="scoring" && (
               <>
                 <div style={s.scoring}>
@@ -305,7 +276,7 @@
                   </div>
                 </div>
                 <div style={s.scoring}>
-                  <div style={s.scoringTitle}>6 races today</div>
+                  <div style={s.scoringTitle}>5 races today</div>
                   {RACES.map((r,i)=>(
                     <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid rgba(255,255,255,0.04)",fontSize:"13px"}}>
                       <span style={{color:TEXT1}}>{r.name}</span>
@@ -313,13 +284,12 @@
                     </div>
                   ))}
                   <div style={{marginTop:"12px",fontSize:"12px",color:TEXT3,opacity:0.4,textAlign:"center"}}>
-                    Maximum possible: 60 pts · Tiebreaker: most winners picked
+                    Maximum possible: 50 pts · Tiebreaker: most winners picked
                   </div>
                 </div>
               </>
             )}
 
-            {/* ── Admin ── */}
             {view==="admin" && !isAdmin && (
               <div style={s.adminBox}>
                 <div style={{...s.raceTitle,marginBottom:"12px"}}>Admin Access</div>
@@ -332,31 +302,22 @@
 
             {view==="admin" && isAdmin && (
               <div style={s.adminBox}>
-                <div style={{...s.raceTitle,marginBottom:"6px"}}>Refresh Leaderboard from Excel</div>
+                <div style={{...s.raceTitle,marginBottom:"6px"}}>Upload Updated Scoresheet</div>
                 <div style={{fontSize:"12px",color:TEXT3,opacity:0.6,marginBottom:"16px",lineHeight:1.6}}>
-                  Update your <strong style={{color:TEXT2}}>ascot_tipping_scoresheet.xlsx</strong> with the latest picks and results, then upload it here to refresh the leaderboard.
+                  After entering race results in Excel, upload the file here to refresh the leaderboard.
                 </div>
-
                 <label style={s.fileLabel}>
                   📂 &nbsp; Tap to select Excel file
                   <input type="file" accept=".xlsx,.xls" onChange={handleFile} style={{display:"none"}}/>
                 </label>
-
                 {loadMsg && (
-                  <div style={{
-                    padding:"10px 14px", borderRadius:"6px", fontSize:"12px", marginBottom:"10px",
-                    background: loadMsg.startsWith("✓") ? "rgba(56,161,105,0.15)" : "rgba(192,57,43,0.15)",
-                    color: loadMsg.startsWith("✓") ? "#68d391" : "#fc8181",
-                    border: `1px solid ${loadMsg.startsWith("✓") ? "rgba(56,161,105,0.3)" : "rgba(192,57,43,0.3)"}`,
-                  }}>{loadMsg}</div>
+                  <div style={{padding:"10px 14px",borderRadius:"6px",fontSize:"12px",marginBottom:"10px",background:loadMsg.startsWith("✓")?"rgba(56,161,105,0.15)":"rgba(192,57,43,0.15)",color:loadMsg.startsWith("✓")?"#68d391":"#fc8181",border:`1px solid ${loadMsg.startsWith("✓")?"rgba(56,161,105,0.3)":"rgba(192,57,43,0.3)"}`}}>{loadMsg}</div>
                 )}
-
                 {leaderboard.length>0 && (
                   <div style={{fontSize:"11px",color:TEXT3,opacity:0.5,marginBottom:"12px",textAlign:"center"}}>
                     {leaderboard.length} guests loaded · last updated {lastUpdate}
                   </div>
                 )}
-
                 <button style={s.btnDanger} onClick={resetAll}>Clear All Data</button>
               </div>
             )}
