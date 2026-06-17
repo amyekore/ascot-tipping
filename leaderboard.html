@@ -173,43 +173,60 @@
       }
     }
 
+    var XLSX_URL = 'https://raw.githubusercontent.com/amyekore/ascot-tipping/main/ascot_tipping_scoresheet.xlsx';
+
+    function parseWorkbook(arrayBuffer) {
+      var wb = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
+
+      var ps = XLSX.utils.sheet_to_json(wb.Sheets['Picks & Scores'], { header: 1 });
+      lb = [];
+      for(var i = 3; i < ps.length; i++) {
+        var r = ps[i];
+        if(!r[1] || String(r[1]).trim() === '') continue;
+        var total = Number(r[12]) || 0;
+        var wins = 0;
+        for(var p = 0; p < PTS_COLS.length; p++) { if(Number(r[PTS_COLS[p]]) === 10) wins++; }
+        lb.push({ name: String(r[1]).trim(), total: total, winners: wins });
+      }
+      lb.sort(function(a,b){ return b.total - a.total || b.winners - a.winners; });
+
+      var rrSheet = XLSX.utils.sheet_to_json(wb.Sheets['Race Results'], { header: 1 });
+      rr = [];
+      for(var j = 3; j < 8; j++) {
+        var row = rrSheet[j] || [];
+        var places = [];
+        for(var k = 1; k <= 6; k++) places.push(row[k] ? String(row[k]).trim() : '');
+        rr.push({ name: String(row[0]||'').replace(/\r\n|\n/g,' '), places: places });
+      }
+
+      var now = new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+      lastUpd = now;
+      localStorage.setItem('lb', JSON.stringify(lb));
+      localStorage.setItem('rr', JSON.stringify(rr));
+      localStorage.setItem('upd', now);
+      render();
+    }
+
+    function autoFetch() {
+      var url = XLSX_URL + '?_=' + Date.now();
+      fetch(url)
+        .then(function(r){ return r.arrayBuffer(); })
+        .then(function(buf){ parseWorkbook(buf); })
+        .catch(function(){});
+    }
+
+    autoFetch();
+    setInterval(autoFetch, 60000);
+
     function doUpload(input) {
       var file = input.files[0];
       if(!file) return;
       var reader = new FileReader();
       reader.onload = function(e) {
         try {
-          var wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-
-          var ps = XLSX.utils.sheet_to_json(wb.Sheets['Picks & Scores'], { header: 1 });
-          lb = [];
-          for(var i = 3; i < ps.length; i++) {
-            var r = ps[i];
-            if(!r[1] || String(r[1]).trim() === '') continue;
-            var total = Number(r[12]) || 0;
-            var wins = 0;
-            for(var p = 0; p < PTS_COLS.length; p++) { if(Number(r[PTS_COLS[p]]) === 10) wins++; }
-            lb.push({ name: String(r[1]).trim(), total: total, winners: wins });
-          }
-          lb.sort(function(a,b){ return b.total - a.total || b.winners - a.winners; });
-
-          var rrSheet = XLSX.utils.sheet_to_json(wb.Sheets['Race Results'], { header: 1 });
-          rr = [];
-          for(var j = 3; j < 8; j++) {
-            var row = rrSheet[j] || [];
-            var places = [];
-            for(var k = 1; k <= 6; k++) places.push(row[k] ? String(row[k]).trim() : '');
-            rr.push({ name: String(row[0]||'').replace(/\r\n|\n/g,' '), places: places });
-          }
-
-          var now = new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-          lastUpd = now;
-          localStorage.setItem('lb', JSON.stringify(lb));
-          localStorage.setItem('rr', JSON.stringify(rr));
-          localStorage.setItem('upd', now);
-          showMsg('\u2713 Loaded ' + lb.length + ' guests \u00b7 ' + now, true);
+          parseWorkbook(e.target.result);
+          showMsg('\u2713 Loaded ' + lb.length + ' guests \u00b7 ' + lastUpd, true);
           refreshGloaded();
-          render();
         } catch(err) {
           showMsg('\u2717 Could not read file \u2014 make sure you are uploading the correct scoresheet.', false);
         }
