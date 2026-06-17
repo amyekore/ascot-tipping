@@ -7,15 +7,16 @@
   <script src="xlsx.full.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { min-height: 100vh; background: linear-gradient(175deg, #00124f 0%, #222c56 50%, #2a3570 100%); font-family: Georgia, 'Times New Roman', serif; color: #f7f3eb; }
+    body { min-height: 100vh; background: #FBF7EF; font-family: Georgia, 'Times New Roman', serif; color: #f7f3eb; }
+    .inner { min-height: 100vh; background: linear-gradient(175deg, #00124f 0%, #222c56 50%, #2a3570 100%); margin: 12px; border-radius: 16px; overflow: hidden; border: 3px solid #FBF7EF; }
 
-    .header { text-align: center; padding: 20px 16px 16px; }
-    .header img { height: 64px; display: block; margin: 0 auto -6px; opacity: 0.92; }
-    .crown { font-size: 28px; margin: 4px 0; letter-spacing: 8px; }
-    .htitle { font-size: 15px; letter-spacing: 6px; color: #d8c08a; font-weight: normal; text-transform: uppercase; margin-bottom: 4px; }
-    .subtitle { font-size: 26px; font-weight: bold; line-height: 1.1; margin-bottom: 4px; }
+    .header { text-align: center; padding: 24px 16px 16px; background: #FBF7EF; }
+    .header img { height: 64px; display: block; margin: 0 auto 12px; }
+    .crown { font-size: 28px; margin: 4px 0; letter-spacing: 8px; color: #d43f84; }
+    .htitle { font-size: 15px; letter-spacing: 6px; color: #00124f; font-weight: normal; text-transform: uppercase; margin-bottom: 4px; opacity: 0.7; }
+    .subtitle { font-size: 26px; font-weight: bold; line-height: 1.1; margin-bottom: 4px; color: #00124f; }
     .divider { width: 60px; height: 2px; background: linear-gradient(90deg, transparent, #d43f84, transparent); margin: 8px auto; }
-    .racecount { font-size: 12px; color: #E8D5A3; letter-spacing: 3px; text-transform: uppercase; opacity: 0.8; }
+    .racecount { font-size: 12px; color: #00124f; letter-spacing: 3px; text-transform: uppercase; opacity: 0.5; padding-bottom: 4px; }
 
     .nav { display: flex; justify-content: center; flex-wrap: wrap; margin: 0 16px 16px; }
     .nav button { padding: 10px 16px; background: transparent; border: 1px solid rgba(216,192,138,0.25); color: #d5d8e0; font-family: Georgia, serif; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; }
@@ -76,8 +77,9 @@
 </head>
 <body>
 
+  <div class="inner">
   <div class="header">
-    <img src="logo-white.png" alt="Kore Systems">
+    <img src="logo-colour.png" alt="Kore Systems">
     <div class="crown">&#9819;</div>
     <div class="htitle">Royal Ascot 2026</div>
     <div class="subtitle">Ladies Day Tipping</div>
@@ -289,5 +291,6 @@
     render();
     if(lb.length > 0) refreshGloaded();
   </script>
+  </div>
 </body>
 </html>
